@@ -12,6 +12,10 @@ API REST para el registro de tópicos en un foro educativo, desarrollada con Spr
 - ✅ Endpoint PUT `/topicos/{id}` para actualizar un tópico existente
 - ✅ Endpoint DELETE `/topicos/{id}` para eliminar un tópico específico
 - ✅ Endpoint GET `/topicos/primeros10` para primeros 10 tópicos ordenados por fecha ASC
+- ✅ **Autenticación JWT** con Spring Security
+- ✅ Endpoint POST `/auth/login` para autenticación de usuarios
+- ✅ Endpoint POST `/auth/register` para registro de nuevos usuarios
+- ✅ Protección de endpoints (solo usuarios autenticados)
 - ✅ Búsqueda por nombre de curso y año específico
 - ✅ Paginación usando `@PageableDefault`
 - ✅ Validación de todos los campos obligatorios usando `@Valid`
@@ -47,6 +51,69 @@ src/main/java/com/example/demo/
 ```
 
 ## Endpoints
+
+### 🔐 Autenticación
+
+**IMPORTANTE**: Todos los endpoints de tópicos requieren autenticación JWT, excepto los endpoints de `/auth/` y `/test/`.
+
+#### POST /auth/register
+
+Registra un nuevo usuario en el sistema.
+
+**Request Body:**
+
+```json
+{
+  "nombre": "Juan Pérez",
+  "correoElectronico": "juan.perez@email.com",
+  "contrasena": "password123"
+}
+```
+
+**Response (200 OK):**
+
+```
+Usuario registrado exitosamente
+```
+
+**Códigos de Error:**
+
+- `400 Bad Request`: Usuario ya existe o datos inválidos
+
+#### POST /auth/login
+
+Autentica un usuario y devuelve un token JWT.
+
+**Request Body:**
+
+```json
+{
+  "correoElectronico": "juan.perez@email.com",
+  "contrasena": "password123"
+}
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Códigos de Error:**
+
+- `401 Unauthorized`: Credenciales inválidas
+- `400 Bad Request`: Datos de entrada inválidos
+
+**Uso del Token:**
+Para acceder a endpoints protegidos, incluye el token en el header Authorization:
+
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+### 📝 Endpoints de Tópicos (Requieren Autenticación)
 
 ### POST /topicos
 
@@ -327,7 +394,34 @@ spring.datasource.password=root
 
 ## Ejemplo de Uso
 
-1. **Crear un usuario de prueba:**
+### 🔐 Flujo de Autenticación
+
+1. **Registrar un nuevo usuario:**
+
+```bash
+curl -X POST http://localhost:8080/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nombre": "Juan Pérez",
+    "correoElectronico": "juan.perez@email.com",
+    "contrasena": "password123"
+  }'
+```
+
+2. **Iniciar sesión para obtener token:**
+
+```bash
+curl -X POST http://localhost:8080/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "correoElectronico": "juan.perez@email.com",
+    "contrasena": "password123"
+  }'
+```
+
+3. **Crear datos de prueba (sin autenticación):**
+
+#### Crear un usuario de prueba:
 
 ```bash
 curl -X POST http://localhost:8080/test/usuario \
@@ -339,7 +433,7 @@ curl -X POST http://localhost:8080/test/usuario \
   }'
 ```
 
-2. **Crear un curso de prueba:**
+#### Crear un curso de prueba:
 
 ```bash
 curl -X POST http://localhost:8080/test/curso \
@@ -350,11 +444,16 @@ curl -X POST http://localhost:8080/test/curso \
   }'
 ```
 
-3. **Crear un tópico:**
+### 📝 Operaciones con Tópicos (Requieren Token)
+
+**Nota**: Reemplaza `YOUR_JWT_TOKEN` con el token obtenido del login.
+
+4. **Crear un tópico:**
 
 ```bash
 curl -X POST http://localhost:8080/topicos \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
     "titulo": "¿Cómo configurar Spring Security?",
     "mensaje": "Necesito ayuda para configurar la autenticación",
@@ -363,42 +462,49 @@ curl -X POST http://localhost:8080/topicos \
   }'
 ```
 
-4. **Listar todos los tópicos:**
+5. **Listar todos los tópicos:**
 
 ```bash
-curl -X GET http://localhost:8080/topicos
+curl -X GET http://localhost:8080/topicos \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-5. **Listar tópicos con filtros:**
+6. **Listar tópicos con filtros:**
 
 ```bash
 # Filtrar por curso
-curl -X GET "http://localhost:8080/topicos?curso=Spring%20Boot"
+curl -X GET "http://localhost:8080/topicos?curso=Spring%20Boot" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 
 # Filtrar por año
-curl -X GET "http://localhost:8080/topicos?anio=2025"
+curl -X GET "http://localhost:8080/topicos?anio=2025" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 
 # Paginación personalizada
-curl -X GET "http://localhost:8080/topicos?page=0&size=5"
+curl -X GET "http://localhost:8080/topicos?page=0&size=5" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-6. **Obtener los primeros 10 tópicos:**
+7. **Obtener los primeros 10 tópicos:**
 
 ```bash
-curl -X GET http://localhost:8080/topicos/primeros10
+curl -X GET http://localhost:8080/topicos/primeros10 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-7. **Obtener detalle de un tópico específico:**
+8. **Obtener detalle de un tópico específico:**
 
 ```bash
-curl -X GET http://localhost:8080/topicos/1
+curl -X GET http://localhost:8080/topicos/1 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-8. **Actualizar un tópico existente:**
+9. **Actualizar un tópico existente:**
 
 ```bash
 curl -X PUT http://localhost:8080/topicos/1 \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
     "titulo": "¿Cómo configurar Spring Security? - Actualizado",
     "mensaje": "Necesito ayuda para configurar la autenticación en mi proyecto Spring Boot. He agregado más detalles.",
@@ -407,10 +513,11 @@ curl -X PUT http://localhost:8080/topicos/1 \
   }'
 ```
 
-9. **Eliminar un tópico específico:**
+10. **Eliminar un tópico específico:**
 
 ```bash
-curl -X DELETE http://localhost:8080/topicos/1
+curl -X DELETE http://localhost:8080/topicos/1 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
 ## Tecnologías Utilizadas
